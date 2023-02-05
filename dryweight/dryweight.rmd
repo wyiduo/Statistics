@@ -1,0 +1,136 @@
+---
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    includes:
+      in_header: "wrap-code.tex"
+---
+
+# Initialization
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+dw<-read.table("dryweight.txt",header=T)
+attach(dw)
+
+# the entire table
+#dw
+
+# the independent/dependent variables
+#volume
+#dryweight
+
+# volume is independent/predictor, dryweight is dependent
+# volume is X, dryweight is Y
+
+# volume score is volume of space occupied by the plant (in this case grass)
+# Biomass dry weight is biomass dry weights for grass
+
+plot(volume, dryweight, xlab="Volume score", ylab="Biomass dry weight",main="Volume scores vs. Biomass dry weights for grass")
+
+
+# ln(x) is log(x) in R
+
+Y <- sqrt(dryweight)
+X <- log(volume + 1)
+
+plot(X, Y, xlab="Volume score", ylab="Biomass dry weight",main="X = ln(volume+1) vs. Y = sqrt(dryweight)")
+
+```
+
+# Fitting a linear model
+
+```{r}
+
+fitlinear<-lm(Y~ X)
+summary(fitlinear)
+
+step(fitlinear)
+
+```
+
+# Fitting a quadratic model
+
+```{r}
+
+fitqr<-lm(Y~ X + I(X^2))
+summary(fitqr)
+
+step(fitqr)
+
+```
+
+# Fitting a cubic model
+
+```{r}
+
+fitcb<-lm(Y~ X + I(X^2)+I(X^3))
+summary(fitcb)
+
+```
+
+# Backwards elimination for cubic model
+
+```{r}
+
+#1. Fit the model with predictors (initial is all predictors)
+#2. Find the predictor with the highest p-value
+#3. If the predictor with the highest p-value has p-value > alpha, then remove that predictor
+#4. Repeat to step 1. Or if all p-values are less than the alpha, then backwards elimination is complete.
+
+
+# Using significance level alpha = 0.05,
+# Also, will not be removing the intercept for the backwards elimination for now
+
+# removing predictor X
+fitcb2<-lm(Y~ I(X^2)+I(X^3))
+summary(fitcb2)
+
+
+# Backwards regression shows Y ~ I(X^2) + I(X^3) is best model
+
+```
+
+# Stepwise regression for cubic model
+
+```{r} 
+
+step(fitcb)
+
+
+# Stepwise regression shows Y ~ I(X^2) + I(X^3) is best model
+
+```
+
+# Fitting regression model with 4th degree polynomial
+
+```{r}
+
+fit4d<-lm(Y ~ X + I(X^2) + I(X^3) + I(X^4))
+summary(fit4d)
+
+step(fit4d)
+
+# Stepwise regression still says Y ~ I(X^2) + I(X^3) is best model. 
+
+# Then, the best model is from the 3rd degree polynomial.
+
+```
+
+# Forcing origin to be 0
+
+```{r}
+
+fit_best_model_no_origin<-lm(Y ~ 0 + I(X^2) + I(X^3))
+summary(fit_best_model_no_origin)
+
+step(fit_best_model_no_origin)
+
+
+# It does not make sense to force the origin to be zero. Stepwise regression shows that the model with the intercept included has a better fit to the the data.
+
+# However, if you decide to force the origin to be zero, the model is still a great fitting model. The fit to the data will definitely still be satisfactory if the origin is forced to be zero.
+
+```

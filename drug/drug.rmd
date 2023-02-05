@@ -1,0 +1,153 @@
+---
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    includes:
+      in_header: "wrap-code.tex"
+---
+
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+drug = read.table("drug.txt",header=T)
+attach(drug)
+
+n<-dim(drug)[1]
+
+p<-dim(drug)[2]-1
+
+
+# Y is the proportion of the drug dose in the liver
+# x1 is the body weight of each rat in grams
+# x2 is the weight of each liver in grams
+# x3 is the relative dose of the drug given to each rat as a fraction of the largest dose
+
+
+# Visualization of correlation of X1 and Y
+plot(x1,Y,pch=19,col="blue",xlab="X1",ylab="Y",main="Regression model of X1 vs. Y")
+
+# Visualization of correlation of X2 and Y
+plot(x2,Y,pch=19,col="blue",xlab="X2",ylab="Y",main="Regression model of X2 vs. Y")
+
+# Visualization of correlation of X3 and Y
+plot(x3,Y,pch=19,col="blue",xlab="X3",ylab="Y",main="Regression model of X3 vs. Y")
+
+```
+
+
+
+```{r}
+
+fit<-lm(Y ~ x1 + x2 + x3)
+summary(fit)
+
+```
+
+
+
+```{r}
+
+# Influence measurement
+influence.measures(fit)
+
+```
+
+```{r}
+
+library(car)
+
+# Leverage for each observation
+plot(1:n,hatvalues(fit),xlab="Observation",ylab="Leverage")
+abline(h=(2*(p + 1)/n))
+identify(hatvalues(fit))
+
+# Leverage > 2(p + 1)/n is “large"
+
+# Observation #3 is significant.
+
+
+# Cook's distance for each observation
+plot(1:n,cooks.distance(fit),xlab="Observation",ylab="Cook's distance")
+abline(h=qf(0.5,p+1,n-(p+1)))
+abline(h=qf(0.1,p+1,n-(p+1)))
+identify(cooks.distance(fit))
+
+# Cook's distance > qf(0.5,p+1,n-(p+1)) means large impact
+# Cook's distance > qf(0.1,p+1,n-(p+1)) means small impact
+
+# Observation #3 has large impact.
+# Observation #13 has small impact.
+
+
+# DFFITS
+plot(1:n,dffits(fit),xlab="Observation",ylab="DFFITS")
+abline(h=1)
+abline(h=-1)
+identify(dffits(fit))
+
+# absolute_value(DFFITS) > 1 are observations to look out for in small to medium datasets
+
+# Observations 3, 13, 19 are observations to look out for
+
+
+# DFBETAS
+plot(1:n,dfbetas(fit)[,1],xlab="Observation",ylab="DFBETAS")
+abline(h=2)
+abline(h=(2/sqrt(n)))
+identify(dfbetas(fit)[,1])
+
+# If absolute_value(DFBETAS) > 2, then major impact
+# If absolute_value(DFBETAS) > 2/sqrt(n), then there is impact; the value of absolute_value(DFBETAS) is the "amount" of impact
+
+```
+
+```{r}
+
+# Perform the outlier test
+outlierTest(fit)
+
+# Evaluate Collinearity
+vif(fit) # variance inflation factors
+sqrt(vif(fit)) > 2
+
+```
+
+```{r}
+
+# Find the covratios
+covratio(fit)
+
+plot(1:n,covratio(fit),xlab="Observation",ylab="COVRATIO")
+abline(h=(1+3*(p+1)))
+abline(h=(1-3*(p+1)))
+identify(covratio(fit))
+
+# No observations are considered influential under the COVRATIO test
+
+```
+
+
+
+```{r}
+
+# If we want to remove the most influential point, we will remove observation 3.
+
+# Removing influential point observation 3,
+
+# Create a matrix with row 3 removed
+drug_outlier_removed <- drug[-c(3),]
+
+
+# You need to use unlist() to convert the lists to data frames before fitting the data
+Y_new<-unlist(drug_outlier_removed[4])
+x1_new<-unlist(drug_outlier_removed[1])
+x2_new<-unlist(drug_outlier_removed[2])
+x3_new<-unlist(drug_outlier_removed[3])
+
+fit_outlier_removed<-lm(Y_new ~ x1_new + x2_new + x3_new)
+summary(fit_outlier_removed)
+
+```

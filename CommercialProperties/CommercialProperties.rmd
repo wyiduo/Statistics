@@ -1,0 +1,270 @@
+---
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    includes:
+      in_header: "wrap-code.tex"
+---
+
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+cp<-read.table("CommercialProperties.txt",header=TRUE)
+
+cp
+
+# Check the class of the dataset, and it should be data frame. Use str function to see the structure of the dataset
+#class(cp)
+str(cp)
+
+attach(cp)
+
+# gets dimensions of cp
+#dim(cp)
+
+# sets n to number of rows in the data table
+n<-dim(cp)[1]
+
+p<-dim(cp)[2]-1
+
+```
+
+
+
+```{r}
+# Visualization of correlation of X1 and Y
+plot(X1,Y,pch=19,col="blue",xlab="X1 = age of property",ylab="Y = rental rates",main="Regression model of X1 vs. Y")
+
+# Visualization of correlation of X2 and Y
+plot(X2,Y,pch=19,col="blue",xlab="X2 = operating expense and taxes",ylab="Y = rental rates",main="Regression model of X2 vs. Y")
+
+# Visualization of correlation of X3 and Y
+plot(X3,Y,pch=19,col="blue",xlab="X3 = vacancy rates",ylab="Y = rental rates",main="Regression model of X3 vs. Y")
+
+# Visualization of correlation of X4 and Y
+plot(X4,Y,pch=19,col="blue",xlab="X4 = total square footage",ylab="Y = rental rates",main="Regression model of X4 vs. Y")
+
+# Observations:
+# X1 = property age
+# There is almost no correlation between property age and rental rate.
+
+# X2 = operating expense and taxes
+# There is a positive correlation between operating expense & taxes and rental rate. It seems that properties that cost more to maintain are more popular to rent.
+
+# X3 = vacancy rates
+# There is almost no correlation between vacancy rate and rental rate.
+
+# X4 = total square footage
+# There is a positive correlation between total square footage of a property and rental rate. It seems that larger properties are more popular to rent.
+
+```
+
+
+
+```{r}
+
+m1<-lm(Y~1)
+summary(m1)
+
+m2<-lm(Y~X1)
+summary(m2)
+
+m3<-lm(Y~X1+X2)
+summary(m3)
+
+m4<-lm(Y~X1+X2+X3)
+summary(m4)
+
+m5<-lm(Y~X1+X2+X3+X4)
+summary(m5)
+
+#m5$coef are the beta values (beta0,beta1,...,beta4)
+
+# Comparing R^2 values of the above models
+summary(m1)[8]
+summary(m2)[8]
+summary(m3)[8]
+summary(m4)[8]
+summary(m5)[8]
+
+# The multiple correlation coefficient is highest at model 5 (R^2 = 0.585), decreases at model 4, and keeps decreasing until it reaches 0 at model 1.
+```
+
+
+
+```{r}
+# Null hypothesis (H0): beta_1 = beta_2 = beta_3 = beta_4
+# Alternative hypothesis (H1): beta_j != 0, for at least one value of j
+
+# F = MSM/MSE = (SSM/DFM) / (SSE/DFE)
+
+anova(m1,m5)
+
+# calculating ss.diff
+anova(m1,m5)[2]
+ss.res.null <- 236.558
+ss.res.full <- 92.231
+
+ss.diff <- ss.res.null - ss.res.full
+
+
+# calculating F.stat
+anova(m1,m5)[1]
+ms.res <- ss.res.full / 76
+#ms.diff <- ss.diff / (80-76)
+ms.diff <- ss.diff / 4
+
+F.stat <- ms.diff / ms.res
+F.stat
+
+# Finding the 95% CI for test statistic
+# F-table value at alpha = 0.05, DFM = 4, DFE = 76
+qf(0.95, 4, 76)
+
+
+# Conclusion:
+# Since F.stat = 29.73201 is not in the range of qf(0.95, 4, 76) = [0, 2.492049], then the null hypothesis is rejected.
+```
+
+
+
+```{r}
+# Assuming that alpha = 0.05, consider the p value of X2.
+summary(m5)
+
+# The p value of X2 is 2.75e-05. Since this value is greatly less than the significance level (alpha = 0.05), then this means that this predictor (X2) has a very statistically significant relationship with the t-value in model 5. This means that X2 cannot be dropped from model 5.
+```
+
+
+
+```{r}
+# By performing H0 : beta_1 = beta_2 = 0 on model 5, the X1 and X2 predictors are now removed.
+
+model.Q1e<-lm(Y~X3+X4)
+
+summary(model.Q1e)
+
+# From the p-value of X3 being 0.807, it is easy to conclude at alpha = 0.05 that X3 is very statistically insignificant. The predictor X3 very well can be dropped.
+
+# For the p-value of the entire model, it is now 1.859e-06 from the original p-value of model 5 at 7.272e-14. The p-value is still sufficiently lower than the significance level (alpha = 0.05), so the null hypothesis can still be rejected.
+```
+
+
+
+```{r}
+
+# 95% CI for beta_0, beta_1, beta_2, beta_3, and beta_4
+
+X<-matrix(0,n,p+1)
+X<-cbind(rep(1,n),X1,X2,X3,X4)
+#X
+
+XTXinv<-solve(t(X)%*%X)
+#XTXinv
+
+sigmasqhat<-deviance(m5)/(n-(p+1))
+alpha<-0.05
+
+c(m5$coef[1]-qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[1,1]),  
+  m5$coef[1]+qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[1,1])) 
+
+c(m5$coef[2]-qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[2,2]),  
+  m5$coef[2]+qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[2,2]))  
+                                                   
+c(m5$coef[3]-qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[3,3]),  
+  m5$coef[3]+qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[3,3]))  
+                                                
+c(m5$coef[4]-qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[4,4]),  
+  m5$coef[4]+qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[4,4]))  
+                                              
+c(m5$coef[5]-qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[5,5]),  
+  m5$coef[5]+qt(1-alpha/2,n-(p+1))*sqrt(sigmasqhat*XTXinv[5,5]))
+
+#built-in CI function
+#confint(m5)
+  
+```
+
+
+
+```{r}
+
+# The 95% Bonferroni Confidence interval for all beta
+
+t<-qt(1-0.025/(p+1),n-(p+1))
+
+
+c(m5$coef[1]-t*sqrt(sigmasqhat*XTXinv[1,1]),  
+  m5$coef[1]+t*sqrt(sigmasqhat*XTXinv[1,1])) 
+
+c(m5$coef[2]-t*sqrt(sigmasqhat*XTXinv[2,2]),  
+  m5$coef[2]+t*sqrt(sigmasqhat*XTXinv[2,2]))  
+                                                   
+c(m5$coef[3]-t*sqrt(sigmasqhat*XTXinv[3,3]),  
+  m5$coef[3]+t*sqrt(sigmasqhat*XTXinv[3,3]))  
+                                                
+c(m5$coef[4]-t*sqrt(sigmasqhat*XTXinv[4,4]),  
+  m5$coef[4]+t*sqrt(sigmasqhat*XTXinv[4,4]))  
+                                              
+c(m5$coef[5]-t*sqrt(sigmasqhat*XTXinv[5,5]),  
+  m5$coef[5]+t*sqrt(sigmasqhat*XTXinv[5,5]))
+
+
+
+# The 95% Scheffe Confidence interval for all beta
+ 
+sf<-sqrt((p+1)*qf(1-0.05,p+1,n-(p+1)))
+
+c(m5$coef[1]-sf*sqrt(sigmasqhat*XTXinv[1,1]),  
+  m5$coef[1]+sf*sqrt(sigmasqhat*XTXinv[1,1])) 
+
+c(m5$coef[2]-sf*sqrt(sigmasqhat*XTXinv[2,2]),  
+  m5$coef[2]+sf*sqrt(sigmasqhat*XTXinv[2,2]))  
+                                                   
+c(m5$coef[3]-sf*sqrt(sigmasqhat*XTXinv[3,3]),  
+  m5$coef[3]+sf*sqrt(sigmasqhat*XTXinv[3,3]))  
+                                                
+c(m5$coef[4]-sf*sqrt(sigmasqhat*XTXinv[4,4]),  
+  m5$coef[4]+sf*sqrt(sigmasqhat*XTXinv[4,4]))  
+                                              
+c(m5$coef[5]-sf*sqrt(sigmasqhat*XTXinv[5,5]),  
+  m5$coef[5]+sf*sqrt(sigmasqhat*XTXinv[5,5]))
+
+
+# beta_0 is obviously different from zero
+# beta_1 is different from zero for all of the 3 CI tests
+# beta_2 is different from zero for all of the 3 CI tests
+# beta_4 is different from zero for all of the 3 CI tests
+
+# beta_3 is obviously not different from zero and can potentially have zero correlation
+
+```
+
+
+
+```{r}
+# X1 = 11, X2 = 8.97, X3 = 0.07, X4 = 60000
+
+
+# create new data frame with new input
+new_data = data.frame(X1=11,X2=8.97,X3=0.07,X4=60000)
+
+predict(m5, new_data, interval="confidence", level = 0.95)
+
+# The 95% confidence interval is [13.28764, 14.08579].
+
+```
+
+
+
+```{r}
+
+predict(m5, new_data, interval="predict", level = 0.95)
+
+# The 95% prediction interval is [11.38751, 15.98592.
+
+```
+

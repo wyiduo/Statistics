@@ -1,0 +1,121 @@
+---
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    includes:
+      in_header: "wrap-code.tex"
+---
+
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+flow<-read.table("flow.txt",header=TRUE)
+flow
+
+class(flow)
+str(flow)
+
+attach(flow)
+
+
+#n<-length(qo)
+
+dim(flow)
+
+n<-dim(flow)[1]
+
+#normally p is datapoints minus 1, but we have 2 variables for the response, so p is datapoints minus 2
+p<-dim(flow)[2]-2
+
+# sets Y = ln(Qo/Qp)
+Y<-log(Qo/Qp)
+
+fit<-lm(Y~X1+X2+X3+X4)
+
+#summary(fit)
+
+#fit$coef
+```
+
+```{r}
+# Visualization of correlation of X1 and Y
+plot(X1,Y,pch=19,col="blue",xlab="X1 = area of watersheds (mi^2)",ylab="Y = ln(Qo/Qp)",main="Regression model of X1 vs. Y")
+
+# Visualization of correlation of X2 and Y
+plot(X2,Y,pch=19,col="blue",xlab="X2 = average slope of watershed (in percent)",ylab="Y = ln(Qo/Qp)",main="Regression model of X2 vs. Y")
+
+# Visualization of correlation of X3 and Y
+plot(X3,Y,pch=19,col="blue",xlab="X3 = surface absorbency index (0 = complete absorbency, 100 = no absorbency)",ylab="Y = ln(Qo/Qp)",main="Regression model of X3 vs. Y")
+
+# Visualization of correlation of X4 and Y
+plot(X4,Y,pch=19,col="blue",xlab="X4 is peak intensity of rainfall (in/hr) computed on half-hour time intervals",ylab="Y = ln(Qo/Qp)",main="Regression model of X4 vs. Y")
+
+# Overall, Y appears to have weak or some correlation with X1, X2, X3, X4 individually, but Y does not appear to have any strong correlation with X1, X2, X3, X4 individually.
+```
+
+```{r}
+# An intercept is included in the model
+summary(fit)
+```
+
+```{r}
+# Fitted values for the model with the intercept
+fit$fit
+```
+
+
+
+```{r}
+# Fit of model with intercept removed (beta_0 = 0)
+fit2<-lm(Y~0+X1+X2+X3+X4)
+summary(fit2)
+```
+
+```{r}
+# Fitted values for the model with intercept removed
+fit2$fit
+```
+
+```{r}
+# Compare model with intercept removed to model with intercept
+summary(fit)
+```
+
+
+
+```{r}
+# Fit of model with intercept, X2, X3 removed
+fit3<-lm(Y~0+X1+X4)
+summary(fit3)
+```
+
+```{r}
+# Fitted values for the model with intercept, X2, X3 removed
+fit3$fit
+```
+
+```{r}
+# Compare to model with no intercept, but using X1, X2, X3, X4
+summary(fit2)
+```
+
+# The regression coefficients for X1 and X4 change across models. The reason for this change is because the independent variables X1, X2, X3, X4 are correlated. In order for there to be no change for the regression coefficients when independent variables (such as X2 and X3) are removed, the independent variables X1, X2, X3, X4 need to have zero correlation (be uncorrelated).
+
+
+
+# The standard error changes when the intercept is dropped because the data points are now in a completely different area of the graph when the intercept is dropped. This changes the regression line and makes small changes to the standard error of each regression coefficient. 
+
+# Furthermore, the SE is reduced because removing the intercept makes the new model more constrainted to the regression line.
+
+# For when X2 and X3 are dropped from the model,
+
+# Consider beta_hat = (X^T X)^(-1) X^T Y
+
+# Also, consider SE of beta_hat = sqrt( diag(s^2 (X^T X)^(-1)) )   where s^2 is the variance of the residuals and diag() is the diagonal of a matrix
+
+# It is very obvious that removing X2 and X3 will change the (X^T X)^(-1), which in turn is used in the equation to calculate the SE of beta_hat. Obviously, if you modify a variable in the equation for SE of beta_hat, you will get a different value for SE of beta_hat.
+
+# Furthermore, the SE is reduced because removing X2 and X3 makes the new model more contrainted, and hence, a regression line is able to fit the model better.

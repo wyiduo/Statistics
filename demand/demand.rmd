@@ -1,0 +1,156 @@
+---
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    includes:
+      in_header: "wrap-code.tex"
+---
+
+# Initialization
+
+```{r}
+
+knitr::opts_chunk$set(echo = TRUE)
+demand<-read.table("demand.txt")
+colnames(demand) = c("X1","X2","X3","Y")
+attach(demand)
+
+# n is the sample size and p is the number of predictors
+
+n = nrow(demand)
+p = ncol(demand)-1
+
+X<-matrix(0,n,p+1)
+X[,1]<-rep(1,n)
+for(j in 1:p)
+X[,j+1]<-demand[,j]
+
+fullfit<-lm(Y~X1+X2+X3, data = demand)
+summary(fullfit)
+
+```
+
+# Forward Selection
+
+```{r} 
+
+# First consider forward selection with SLE = 0.15
+fit1<-lm(Y~1,data=demand)
+
+summary(fit1)
+add1(fit1,~X1+X2+X3,test = "F", data=demand)
+
+# X1 has lowest p-value
+fit2<-lm(Y~X1,data=demand)
+
+summary(fit2)
+add1(fit2,~X1+X2+X3,test = "F", data=demand)
+
+# All p-values are over 0.15
+
+# model is Y~X1
+
+```
+
+# Backward elimination
+
+```{r} 
+
+# Now, consider the backward elimination with SLS = 0.05
+
+# remove the predictor with the highest p-value (as long as that predictor's p-value is > 0.05)
+
+fit.back<-lm(Y~.,data=demand)
+summary(fit.back)
+
+# remove X1, highest p-value
+fit.back<-update(fit.back, .~.-X1)
+summary(fit.back)
+
+# remove intercept, highest p-value
+fit.back<-lm(Y ~ 0 + X2 + X3, data=demand)
+summary(fit.back)
+
+# remove X3, highest p-value
+fit.back<-lm(Y ~ 0 + X2, data=demand)
+summary(fit.back)
+
+# no more p-value > 0.05
+
+# model is Y~0+X2
+
+```
+
+# Subset regression
+
+```{r}
+# we need to install some packages first before doing subset regression
+ 
+
+# R^2 now has all subsets models
+
+library(leaps)
+r2.leaps <- leaps(X[,-1], Y, nbest=3, method='r2')
+plot(r2.leaps$size, r2.leaps$r2, pch=23, bg='blue', cex=2)
+best.model.r2 <- r2.leaps$which[which((r2.leaps$r2 == max(r2.leaps$r2))),]
+#print(best.model.r2)
+
+
+
+
+
+# adjusted R^2 now has all subset models
+adjr2.leaps <- leaps(X[,-1], Y, nbest=3, method='adjr2')
+plot(adjr2.leaps$size, adjr2.leaps$adjr2, pch=23, bg='blue', cex=2)
+best.model.adjr2 <- adjr2.leaps$which[which((adjr2.leaps$adjr2 == max(adjr2.leaps$adjr2))),]
+#print(best.model.adjr2)
+
+
+
+
+# C_p now has all subset models
+Cp.leaps <- leaps(X[,-1],Y, nbest=3, method='Cp')
+plot(Cp.leaps$size, Cp.leaps$Cp, pch=23, bg='blue', cex=2)
+Cp.leaps2=regsubsets(Y~., data=demand,nvmax=5)
+summary.Cp = summary(Cp.leaps2)
+summary.Cp$cp
+#plot(Cp.leaps2,scale="Cp")
+
+
+
+# Cp plot is needed from faraway R package. 
+ 
+
+library(faraway)
+#Cpplot(Cp.leaps)
+
+
+# Stepwise regression performed using the AIC criteria.
+
+null = lm(Y~1,data = demand)
+full = lm(Y~., data = demand)
+summary(fit <- lm(Y~., data = demand))
+sfit <- step(null, scope = list(lower=null, upper=full),direction='both')
+summary(sfit)
+#sfit$anova
+
+
+
+# Step function used to perform the forward selection, backward elimination. 
+
+null = lm(Y~1,data = demand)
+full = lm(Y~., data = demand)
+
+## forward selection
+sfit_f <- step(null, scope = list(lower=null, upper=full),direction='forward')
+
+## backward selection
+
+sfit_b <- step(full, direction='backward')
+
+
+# model is Y ~ X2 + X3
+```
+
+# Best model for forward selection is Y~X1, best model for backwards elimination is Y~0+X2, best model for subset regression is Y~X2+X3.
